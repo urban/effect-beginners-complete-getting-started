@@ -1,55 +1,17 @@
-import { Schema } from "@effect/schema";
-import { Config, Data, Effect } from "effect";
+import { Effect } from "effect";
+import { PokeApi } from "./PokeApi";
 
-/** Schema **/
-class Pokemon extends Schema.Class<Pokemon>("Pokemon")({
-  id: Schema.Number,
-  order: Schema.Number,
-  name: Schema.String,
-  height: Schema.Number,
-  weight: Schema.Number,
-}) {}
-
-
-/** Errors **/
-class FetchError extends Data.TaggedError("FetchError")<{}> {}
-class JsonError extends Data.TaggedError("JsonError")<{}> {}
-
-
-/** Configuration **/
-const config = Config.string("BASE_URL");
-
-
-/** Implementation **/
-const fetchRequest = (baseUrl: string) =>
-  Effect.tryPromise({
-    try: () => fetch(`${baseUrl}/api/v2/pokemon/garchomp/`),
-    catch: () => new FetchError(),
-  });
-
-const jsonResponse = (response: Response) =>
-  Effect.tryPromise({
-    try: () => response.json(),
-    catch: () => new JsonError(),
-  });
-
-const decodePokemon = Schema.decodeUnknown(Pokemon);
-
+/** Implementation from service**/
 const program = Effect.gen(function* () {
-  const baseUrl = yield* config;
-  const response = yield* fetchRequest(baseUrl);
-  if (!response.ok) {
-    return yield* new FetchError();
-  }
-
-  const json = yield* jsonResponse(response);
-
-  return yield* decodePokemon(json);
+  const pokeApi = yield* PokeApi;
+  return yield* pokeApi.getPokemon;
 });
 
+/** Running effect **/
+const runnable = program.pipe(Effect.provideService(PokeApi, PokeApiLive));
 
 /** Error handling **/
-const main = program.pipe(
+const main = runnable.pipe(
   Effect.catchTags({
     FetchError: () => Effect.succeed("Fetch error"),
     JsonError: () => Effect.succeed("Json error"),
@@ -57,6 +19,4 @@ const main = program.pipe(
   })
 );
 
-
-/** Running effect **/
 Effect.runPromise(main).then(console.log);
