@@ -1,5 +1,11 @@
-import { Effect } from "effect";
+import { Effect, Layer } from "effect";
+import { BuildPokeApiUrl } from "./BuildPokeApiUrl";
 import { PokeApi } from "./PokeApi";
+import { PokeApiUrl } from "./PokeApiUrl";
+import { PokemonCollection } from "./PokemonCollection";
+
+/** Dependencies for program **/
+const MainLayer = Layer.mergeAll(PokeApi.Live);
 
 /** Implementation from service**/
 const program = Effect.gen(function* () {
@@ -8,7 +14,7 @@ const program = Effect.gen(function* () {
 });
 
 /** Running effect **/
-const runnable = program.pipe(Effect.provideService(PokeApi, PokeApiLive));
+const runnable = program.pipe(Effect.provide(MainLayer));
 
 /** Error handling **/
 const main = runnable.pipe(
